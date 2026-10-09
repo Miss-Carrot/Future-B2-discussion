@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Spin &amp; Discuss</title>
+<link rel="icon" type="image/png" sizes="48x48" href="favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    box-sizing: border-box;
+    --bg-0:#0f1019;
+    --bg-1:#191527;
+    --surface:#1d2030;
+    --surface-line: rgba(255,255,255,0.09);
+    --ink:#f4f4f8;
+    --ink-dim:#9a9db3;
+    --accent:#ffc857;
+    --accent-ink:#241a04;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  html{ scroll-padding-top: env(safe-area-inset-top, 0px); }
+  *,*::before,*::after{ box-sizing: inherit; }
+
+  html,body{
+    margin:0;
+    min-height:100%;
+    background:
+      radial-gradient(120% 90% at 50% -10%, var(--bg-1) 0%, var(--bg-0) 55%),
+      var(--bg-0);
+    color:var(--ink);
+    font-family:'Poppins', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .page{
+    min-height:100vh;
+    min-height:100dvh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:36px 20px 44px;
+    gap:6px;
+  }
+
+  header{
+    text-align:center;
+    max-width:540px;
+    margin-bottom: 6px;
+  }
+  h1{
+    font-size:clamp(22px,4vw,30px);
+    font-weight:700;
+    margin:0 0 6px;
+    letter-spacing:-0.01em;
+  }
+  header p{
+    margin:0;
+    color:var(--ink-dim);
+    font-size:14.5px;
+    line-height:1.5;
+  }
+
+  .stage{
+    position:relative;
+    width:min(80vw, 480px);
+    aspect-ratio:1/1;
+    margin:22px 0 8px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+
+  .glow{
+    position:absolute;
+    inset:-8%;
+    border-radius:50%;
+    background: radial-gradient(circle, rgba(255,200,87,0.16) 0%, rgba(255,200,87,0) 65%);
+    filter: blur(2px);
+    pointer-events:none;
+  }
+
+  #wheel{
+    width:100%;
+    height:100%;
+    display:block;
+    border-radius:50%;
+    filter: drop-shadow(0 18px 34px rgba(0,0,0,0.55));
+    transition: transform 3.6s cubic-bezier(0.13, 0.66, 0.15, 1);
+    will-change: transform;
+  }
+  @media (prefers-reduced-motion: reduce){
+    #wheel{ transition-duration: 1.1s; }
+  }
+
+  .hub{
+    position:absolute;
+    width:14%;
+    height:14%;
+    border-radius:50%;
+    background: linear-gradient(145deg, #2a2d40, #14151f);
+    border:2px solid rgba(255,255,255,0.14);
+    box-shadow: inset 0 2px 6px rgba(0,0,0,0.5), 0 4px 10px rgba(0,0,0,0.4);
+    pointer-events:none;
+  }
+
+  .pointer{
+    position:absolute;
+    top:-6px;
+    left:50%;
+    transform:translateX(-50%);
+    width:0; height:0;
+    border-left:15px solid transparent;
+    border-right:15px solid transparent;
+    border-top:26px solid var(--accent);
+    filter: drop-shadow(0 3px 4px rgba(0,0,0,0.45));
+    z-index:5;
+  }
+  .pointer::after{
+    content:"";
+    position:absolute;
+    top:-30px; left:-6px;
+    width:12px; height:12px;
+    border-radius:50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 4px rgba(255,200,87,0.18);
+  }
+
+  .finished-label{
+    position:absolute;
+    inset:0;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding:16%;
+  }
+  .finished-label.show{ display:flex; }
+  .finished-label div{
+    font-family:'Fraunces', serif;
+    font-size:clamp(17px,2.6vw,21px);
+    line-height:1.4;
+    color:var(--ink);
+  }
+
+  .controls{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:14px;
+    margin-top:10px;
+  }
+
+  #spinBtn{
+    appearance:none;
+    border:none;
+    cursor:pointer;
+    background:var(--accent);
+    color:var(--accent-ink);
+    font-family:'Poppins', sans-serif;
+    font-weight:700;
+    font-size:17px;
+    letter-spacing:0.01em;
+    padding:15px 46px;
+    border-radius:999px;
+    box-shadow: 0 10px 24px rgba(255,200,87,0.28), inset 0 1px 0 rgba(255,255,255,0.4);
+    transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+  }
+  #spinBtn:hover:not(:disabled){ transform: translateY(-1px); box-shadow: 0 14px 28px rgba(255,200,87,0.36); }
+  #spinBtn:active:not(:disabled){ transform: translateY(1px) scale(0.98); }
+  #spinBtn:disabled{ filter:grayscale(0.5) brightness(0.75); cursor:default; box-shadow:none; }
+  #spinBtn:focus-visible{ outline:3px solid #fff; outline-offset:3px; }
+
+  .meta{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    color:var(--ink-dim);
+    font-size:13.5px;
+  }
+  .meta .dot{ opacity:0.4; }
+  #startOver{
+    background:none;
+    border:none;
+    color:var(--ink-dim);
+    font-family:inherit;
+    font-size:13.5px;
+    text-decoration:underline;
+    text-underline-offset:3px;
+    cursor:pointer;
+    padding:0;
+  }
+  #startOver:hover{ color:var(--ink); }
+  #startOver:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; border-radius:3px; }
+
+  /* Reveal modal */
+  .overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(6,6,10,0.72);
+    backdrop-filter: blur(3px);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+    padding-top: calc(24px + env(safe-area-inset-top, 0px));
+    padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+    opacity:0;
+    pointer-events:none;
+    transition: opacity 0.22s ease;
+    z-index:20;
+    overflow-y:auto;
+  }
+  .overlay.show{ opacity:1; pointer-events:auto; }
+
+  .card{
+    position:relative;
+    width:min(620px, 100%);
+    max-height:calc(100vh - 48px);
+    max-height:calc(100dvh - 48px);
+    overflow-y:auto;
+    background:var(--surface);
+    border:1px solid var(--surface-line);
+    border-radius:22px;
+    padding:40px 40px 32px;
+    text-align:center;
+    box-shadow: 0 30px 70px rgba(0,0,0,0.55);
+    transform: scale(0.85);
+    transition: transform 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+  }
+  .overlay.show .card{ transform: scale(1); }
+
+  .card .swatch{
+    width:44px; height:6px;
+    border-radius:4px;
+    margin:0 auto 20px;
+  }
+  .card p.question{
+    font-family:'Fraunces', serif;
+    font-size:clamp(19px, 3.2vw, 24px);
+    line-height:1.48;
+    color:var(--ink);
+    margin:0 0 28px;
+  }
+
+  .phrases-label{
+    text-align:left;
+    font-size:12px;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    color:var(--ink-dim);
+    margin:0 0 10px;
+    font-weight:600;
+  }
+
+  .phrases{
+    list-style:none;
+    margin:0;
+    padding:0;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px 14px;
+    text-align:left;
+  }
+  .phrases li{
+    background:rgba(255,255,255,0.04);
+    border:1px solid var(--surface-line);
+    border-radius:12px;
+    padding:11px 13px;
+    font-size:14px;
+    line-height:1.4;
+    color:var(--ink);
+    font-style:italic;
+  }
+  @media (max-width: 560px){
+    .phrases{ grid-template-columns:1fr; }
+    .card{ padding:32px 22px 26px; }
+  }
+
+  .card .hint{
+    margin-top:24px;
+    font-family:'Poppins', sans-serif;
+    font-size:12.5px;
+    color:var(--ink-dim);
+  }
+  .card .close{
+    position:absolute;
+    top:14px; right:16px;
+    background:none;
+    border:none;
+    color:var(--ink-dim);
+    font-size:20px;
+    line-height:1;
+    cursor:pointer;
+    padding:6px;
+  }
+  .card .close:hover{ color:var(--ink); }
+  .card .close:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; border-radius:6px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <h1>Spin &amp; discuss</h1>
+    <p>Likelihood speaking wheel — spin for a question, then answer it using the phrases that pop up.</p>
+  </header>
+
+  <div class="stage">
+    <div class="glow"></div>
+    <canvas id="wheel" width="1200" height="1200"></canvas>
+    <div class="hub"></div>
+    <div class="pointer"></div>
+    <div class="finished-label" id="finishedLabel"><div>All 25 questions done.<br>Nice work — hit restart for another round.</div></div>
+  </div>
+
+  <div class="controls">
+    <button id="spinBtn" type="button">Spin it</button>
+    <div class="meta">
+      <span id="counter">25 questions left</span>
+      <span class="dot">&middot;</span>
+      <button id="startOver" type="button">Start over</button>
+    </div>
+  </div>
+
+</div>
+
+<div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="cardText">
+  <div class="card">
+    <button class="close" id="closeCard" aria-label="Close">&times;</button>
+    <div class="swatch" id="cardSwatch"></div>
+    <p class="question" id="cardText"></p>
+    <div class="phrases-label">Useful phrases</div>
+    <ul class="phrases" id="cardPhrases"></ul>
+    <div class="hint">Spin again when you're ready for the next one</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var QUESTIONS = [
+    "How likely is it to rain tomorrow?",
+    "How likely are you to start your own business in the next year?",
+    "How likely are you to attend the next English class?",
+    "How likely are you to learn another language in the future?",
+    "How likely are you to remember the vocabulary from this lesson?",
+    "How likely are you to check your phone before the end of class?",
+    "How likely is it that VR will be part of daily life within the next five years?",
+    "How likely are you to live in this city in ten years\u2019 time?",
+    "How likely are you to get a new job in the next two years?",
+    "How likely are you to buy a snack today?",
+    "How likely are you to watch a film this weekend?",
+    "How likely are you to travel abroad next year?",
+    "How likely are you to be part of a video call this week?",
+    "How likely is it that you will like the same music in ten years\u2019 time?",
+    "How likely are you to use an online map this week?",
+    "How likely are you to use English at work in the future?",
+    "How likely are you to buy a new gadget this year?",
+    "How likely is it that you will travel to space in your lifetime?",
+    "How likely are you to get something in the post today?",
+    "How likely are you to work in the tech industry?",
+    "How likely are you to go out tonight?",
+    "How likely is it that we share a birthday?",
+    "How likely are you to become a teacher?",
+    "How likely are you to cook dinner tonight?",
+    "How likely are you to do sport this weekend?"
+  ];
+
+  var PHRASES = [
+    "It looks like \u2026 is going to \u2026",
+    "be certain to \u2026",
+    "\u2026 might (not) + infinitive",
+    "\u2026 could + infinitive",
+    "be likely to \u2026",
+    "be unlikely to \u2026",
+    "be due to \u2026",
+    "There\u2019s a chance that \u2026",
+    "I expect \u2026 will \u2026",
+    "I doubt \u2026 will \u2026"
+  ];
+
+  var canvas = document.getElementById('wheel');
+  var ctx = canvas.getContext('2d');
+  var spinBtn = document.getElementById('spinBtn');
+  var counterEl = document.getElementById('counter');
+  var startOverBtn = document.getElementById('startOver');
+  var overlay = document.getElementById('overlay');
+  var cardText = document.getElementById('cardText');
+  var cardPhrases = document.getElementById('cardPhrases');
+  var cardSwatch = document.getElementById('cardSwatch');
+  var closeCardBtn = document.getElementById('closeCard');
+  var finishedLabel = document.getElementById('finishedLabel');
+
+  var SIZE = canvas.width; // internal drawing resolution
+  var CX = SIZE / 2, CY = SIZE / 2;
+  var OUTER_R = SIZE / 2 - 10;
+  var INNER_R = SIZE * 0.14;
+
+  var remaining = [];
+  var currentColors = [];
+  var pendingRemovalIndex = -1; // index inside `remaining` that must be dropped on next spin
+  var isSpinning = false;
+  var finished = false;
+
+  function shuffle(arr){
+    var a = arr.slice();
+    for (var i = a.length - 1; i > 0; i--){
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+
+  function colorForIndex(i){
+    var hue = (i * 137.508) % 360; // golden angle -> well-spread hues
+    var light = (i % 2 === 0) ? 54 : 45;
+    return 'hsl(' + hue.toFixed(1) + ', 68%, ' + light + '%)';
+  }
+
+  function shortLabel(text){
+    var q = text.replace(/^How likely (is it|are you) (to |that )?/i, '');
+    q = q.replace(/\?$/, '');
+    if (q.length > 40) q = q.slice(0, 37).trim() + '...';
+    return q;
+  }
+
+  function fitText(text, maxWidth, font){
+    ctx.font = font;
+    if (ctx.measureText(text).width <= maxWidth) return text;
+    var t = text;
+    while (t.length > 3 && ctx.measureText(t + '...').width > maxWidth){
+      t = t.slice(0, -1);
+    }
+    return t.trim() + '...';
+  }
+
+  function drawWheel(list){
+    ctx.clearRect(0, 0, SIZE, SIZE);
+    var n = list.length;
+    if (n === 0) return;
+    var seg = (Math.PI * 2) / n;
+    var fontSize = Math.max(13, Math.min(22, (360 / n) * 1.05));
+    currentColors = [];
+
+    for (var i = 0; i < n; i++){
+      var start = -Math.PI / 2 + i * seg;
+      var end = start + seg;
+      var color = colorForIndex(i);
+      currentColors.push(color);
+
+      ctx.beginPath();
+      ctx.moveTo(CX, CY);
+      ctx.arc(CX, CY, OUTER_R, start, end);
+      ctx.closePath();
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(15,16,25,0.9)';
+      ctx.stroke();
+
+      // label
+      var mid = start + seg / 2;
+      ctx.save();
+      ctx.translate(CX, CY);
+      ctx.rotate(mid);
+      ctx.fillStyle = '#ffffff';
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = 'left';
+      var maxWidth = OUTER_R - INNER_R - 30;
+      var font = fontSize + 'px Poppins, sans-serif';
+      ctx.font = 'bold ' + font;
+      var label = fitText(shortLabel(list[i]), maxWidth, 'bold ' + font);
+      ctx.fillText(label, INNER_R + 14, 0);
+      ctx.restore();
+    }
+  }
+
+  function updateCounter(){
+    var n = remaining.length;
+    counterEl.textContent = n + (n === 1 ? ' question left' : ' questions left');
+  }
+
+  function showFinished(){
+    finished = true;
+    finishedLabel.classList.add('show');
+    spinBtn.textContent = 'Restart';
+    ctx.clearRect(0, 0, SIZE, SIZE);
+  }
+
+  function resetAll(){
+    remaining = shuffle(QUESTIONS);
+    pendingRemovalIndex = -1;
+    finished = false;
+    finishedLabel.classList.remove('show');
+    overlay.classList.remove('show');
+    canvas.style.transition = 'none';
+    canvas.style.transform = 'rotate(0deg)';
+    void canvas.offsetHeight;
+    canvas.style.transition = '';
+    drawWheel(remaining);
+    updateCounter();
+    spinBtn.textContent = 'Spin it';
+    spinBtn.disabled = false;
+  }
+
+  function openCard(text, color){
+    cardText.textContent = text;
+    cardSwatch.style.background = color;
+    cardPhrases.innerHTML = '';
+    PHRASES.forEach(function(p){
+      var li = document.createElement('li');
+      li.textContent = p;
+      cardPhrases.appendChild(li);
+    });
+    overlay.classList.add('show');
+  }
+
+  function closeCard(){
+    overlay.classList.remove('show');
+  }
+
+  function handleSpin(){
+    if (isSpinning) return;
+
+    if (finished){
+      resetAll();
+      return;
+    }
+
+    // remove the previously revealed question now that a new spin starts
+    if (pendingRemovalIndex > -1){
+      remaining.splice(pendingRemovalIndex, 1);
+      pendingRemovalIndex = -1;
+      canvas.style.transition = 'none';
+      canvas.style.transform = 'rotate(0deg)';
+      void canvas.offsetHeight;
+      canvas.style.transition = '';
+      drawWheel(remaining);
+      updateCounter();
+    }
+
+    if (remaining.length === 0){
+      showFinished();
+      return;
+    }
+
+    closeCard();
+    isSpinning = true;
+    spinBtn.disabled = true;
+
+    var n = remaining.length;
+    var targetIndex = Math.floor(Math.random() * n);
+    var segDeg = 360 / n;
+    var segMid = (targetIndex + 0.5) * segDeg;
+    var finalMod = (360 - segMid + 360) % 360;
+    var extraSpins = 5 + Math.floor(Math.random() * 3); // 5-7 full turns
+    var jitter = (Math.random() - 0.5) * (segDeg * 0.5); // land slightly off-center, still inside the slice
+    var totalRotation = extraSpins * 360 + finalMod + jitter;
+
+    canvas.style.transform = 'rotate(' + totalRotation + 'deg)';
+
+    function onEnd(e){
+      if (e.propertyName !== 'transform') return;
+      canvas.removeEventListener('transitionend', onEnd);
+      isSpinning = false;
+      spinBtn.disabled = false;
+      pendingRemovalIndex = targetIndex;
+      openCard(remaining[targetIndex], currentColors[targetIndex]);
+    }
+    canvas.addEventListener('transitionend', onEnd);
+  }
+
+  spinBtn.addEventListener('click', handleSpin);
+  startOverBtn.addEventListener('click', function(){ resetAll(); });
+  closeCardBtn.addEventListener('click', closeCard);
+  overlay.addEventListener('click', function(e){
+    if (e.target === overlay) closeCard();
+  });
+
+  resetAll();
+})();
+</script>
+</body>
+</html>
